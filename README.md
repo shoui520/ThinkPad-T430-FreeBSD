@@ -157,7 +157,16 @@ Install desktop environment packages (KDE Plasma):
 pkg install xorg kde sddm plasma6-sddm-kcm pipewire
 ```
 
-Fonts. [x11-fonts/noto](https://www.freshports.org/x11-fonts/noto/) is a meta package that installs all Noto fonts. Including emoji, For Chinese (SC, TC, HK), Japanese & Korean and "extra" fonts for math, Arabic, Hebrew, Devanagari etc. I recommend the full `noto` package. For Japanese specifically, people have been recommending the following stack for years: `noto-jp noto-emoji ja-font-vlgothic ja-font-sazanami`
+Set up sudo. visudo will use the `vi` editor by default. To use a different editor, export the EDITOR= variable. e.g. `EDITOR=nano visudo`
+```
+visudo
+```
+Uncomment this line and save:
+```
+%wheel ALL=(ALL:ALL) ALL
+```
+
+Install Fonts. [x11-fonts/noto](https://www.freshports.org/x11-fonts/noto/) is a meta package that installs all Noto fonts. Including emoji, For Chinese (SC, TC, HK), Japanese & Korean and "extra" fonts for math, Arabic, Hebrew, Devanagari etc. I recommend the full `noto` package. For Japanese specifically, people have been recommending the following stack for years: `noto-jp noto-emoji ja-font-vlgothic ja-font-sazanami`
 ```
 pkg install noto
 ```
@@ -356,6 +365,44 @@ chown yourusername:yourusername /home/yourusername/.xprofile
 Then you need to add Anthy in KDE with `fcitx5-configtool`.  
 
 Fix KDE keyboard shortcuts being broken:
+### VA-API GPU accelerated video decode in the browser
+
+This is the only way you can watch YouTube videos in the browser without the CPU being pinned at ~90%.  
+Only Firefox works for VA-API on FreeBSD. Chromium can *attempt* VA-API, but fail, silently crash and fallback to software decoding.  
+Install:
+```
+sudo pkg install libva libva-intel-driver libva-utils firefox
+```
+Environment variable (add to .shrc/.zshrc/.profile)
+```
+export MOZ_X11_EGL=1
+```
+In Firefox, visit about:config
+
+* gfx.webrender.force-enabled       → true
+* media.ffmpeg.vaapi.enabled         → true
+* media.ffvpx.enabled                → false
+* media.rdd-vpx.enabled              → false
+* media.hardware-video-decoding.force-enabled → true
+* media.ffmpeg.vaapi-drm-display.enabled      → true  (create as boolean)
+* security.sandbox.content.level     → 0
+
+In Firefox you NEED this extension: [enhanced-h264ify](https://addons.mozilla.org/en-US/firefox/addon/enhanced-h264ify/)   
+In h264ify, Block 60fps video, Block VP8, Block VP9 and Block AV1.  
+
+### Power plans script
+
+With my setup, FreeBSD will be adaptively scaling the processor clocks (clocks down when nothing is happening, turbos when it needs to etc.). This is fine for regular usage, but not for battery life. 
+If you want to maximize battery life, it would be nice to have a "battery saver" mode that downclocks the CPU to the lowest frequency and keeps it there. That's why I made the script powerctl.sh that lets you choose a power plan. (Battery Saver, Balanced, Performance)
+
+* Battery Saver: keeps the CPU at the lowest supported clock
+* Balanced: Adaptive. Lets the CPU go as low as it needs and as high as it needs + Turbo
+* Performance: Locked to the highest base clock + Turbo
+
+Requires kdialog.
+Drop it in your scripts directory, make it executable with `chmod +x powerctl.sh`.  
+Assign a keyboard shortcut to it in KDE system settings. (KDE system settings → Keyboard → Shortcuts → Add New → Command or Script → powerctl.sh). I assigned Meta+B to it.  
+You can verify the CPU frequency with `sysctl dev.cpu.0.freq`
 
 ### Tweaks
 
