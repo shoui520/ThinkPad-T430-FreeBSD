@@ -425,14 +425,15 @@ sleep 1
 EOF
 sudo chmod 755 /etc/rc.suspend
 ```
+(requires editing in your username)
 ```
 sudo tee /etc/rc.resume << 'EOF'
 #!/bin/sh
-XAUTH=$(find /tmp -maxdepth 1 -name 'xauth_*' -user cure-wink 2>/dev/null | head -1)
-DBUSADDR=$(procstat -e $(/usr/bin/pgrep -u cure-wink kwin | head -1) 2>/dev/null | grep -o 'DBUS_SESSION_BUS_ADDRESS=[^ ]*' | cut -d= -f2-)
+XAUTH=$(find /tmp -maxdepth 1 -name 'xauth_*' -user <yourusername> 2>/dev/null | head -1)
+DBUSADDR=$(procstat -e $(/usr/bin/pgrep -u <yourusername> kwin | head -1) 2>/dev/null | grep -o 'DBUS_SESSION_BUS_ADDRESS=[^ ]*' | cut -d= -f2-)
 
 if [ -n "$DBUSADDR" ] && [ -n "$XAUTH" ]; then
-    /usr/bin/su -m cure-wink -c "DISPLAY=:0 XAUTHORITY=$XAUTH DBUS_SESSION_BUS_ADDRESS=$DBUSADDR /usr/local/bin/qdbus6 org.freedesktop.ScreenSaver /ScreenSaver Lock" &
+    /usr/bin/su -m <yourusername> -c "DISPLAY=:0 XAUTHORITY=$XAUTH DBUS_SESSION_BUS_ADDRESS=$DBUSADDR /usr/local/bin/qdbus6 org.freedesktop.ScreenSaver /ScreenSaver Lock" &
 fi
 vidcontrol -s 9 < /dev/ttyv0
 EOF
