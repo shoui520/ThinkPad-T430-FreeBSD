@@ -384,7 +384,7 @@ In Firefox, visit about:config
 * media.ffvpx.enabled                → false
 * media.rdd-vpx.enabled              → false
 * media.hardware-video-decoding.force-enabled → true
-* media.ffmpeg.vaapi-drm-display.enabled      → true  (create as boolean)
+* media.ffmpeg.vaapi-drm-display.enabled      → true
 * security.sandbox.content.level     → 0
 
 In Firefox you NEED this extension: [enhanced-h264ify](https://addons.mozilla.org/en-US/firefox/addon/enhanced-h264ify/)   
@@ -403,6 +403,42 @@ Requires kdialog.
 Drop it in your scripts directory, make it executable with `chmod +x powerctl.sh`.  
 Assign a keyboard shortcut to it in KDE system settings. (KDE system settings → Keyboard → Shortcuts → Add New → Command or Script → powerctl.sh). I assigned Meta+B to it.  
 You can verify the CPU frequency with `sysctl dev.cpu.0.freq`
+
+### Fix sleep
+
+Technically, sleep works just fine with the command:
+```
+sudo acpiconf -s 3
+```
+But when you increase the variables to having KDE + wanting sleep to work with lid close events, that's when things get a little tricky.
+The solution I have come up with:
+
+First, disable KDE's sleep on lid close.
+KDE System Settings → Power Management → set "When laptop lid closed" to Do Nothing for all 3 modes (On AC Power, On Battery, On Low Battery)  
+
+Then:
+```
+sudo tee /etc/rc.suspend << 'EOF'
+#!/bin/sh
+vidcontrol -s 2 < /dev/ttyv0
+sleep 1
+EOF
+sudo chmod 755 /etc/rc.suspend
+```
+```
+sudo tee /etc/rc.resume << 'EOF'
+#!/bin/sh
+XAUTH=$(find /tmp -maxdepth 1 -name 'xauth_*' -user cure-wink 2>/dev/null | head -1)
+DBUSADDR=$(procstat -e $(/usr/bin/pgrep -u cure-wink kwin | head -1) 2>/dev/null | grep -o 'DBUS_SESSION_BUS_ADDRESS=[^ ]*' | cut -d= -f2-)
+
+if [ -n "$DBUSADDR" ] && [ -n "$XAUTH" ]; then
+    /usr/bin/su -m cure-wink -c "DISPLAY=:0 XAUTHORITY=$XAUTH DBUS_SESSION_BUS_ADDRESS=$DBUSADDR /usr/local/bin/qdbus6 org.freedesktop.ScreenSaver /ScreenSaver Lock" &
+fi
+vidcontrol -s 9 < /dev/ttyv0
+EOF
+sudo chmod 755 /etc/rc.resume
+```
+That should make sleep work.    
 
 ### Tweaks
 
