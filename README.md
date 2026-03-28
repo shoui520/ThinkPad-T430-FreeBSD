@@ -450,6 +450,7 @@ vidcontrol -s 9 < /dev/ttyv0
 EOF
 sudo chmod 755 /etc/rc.resume
 ```
+For the best reliability, switch to a tty before closing the lid.    
 That should make sleep work.    
 
 ### Tweaks
