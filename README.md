@@ -3,7 +3,7 @@
 Everything works! With a few caveats.
 
 Laptop specific quirks:
-* Lid close to sleep is finnicky
+* Lid close to sleep is finicky
 * Hibernate
 
 ## Full install guide with KDE:
@@ -106,7 +106,7 @@ Now we can install some software and configure the system.
 Set the DNS permanently (optional)  
 Edit /etc/resolv.conf:
 ```
-cat >> /etc/resolv.conf << 'EOF'
+cat > /etc/resolv.conf << 'EOF'
 nameserver 1.1.1.1
 nameserver 1.0.0.1
 options edns0
@@ -207,6 +207,9 @@ Enable laptop essentials (CPU clock speed scaling, S3 sleep, power saving):
 sysrc powerd_enable="YES"
 sysrc powerd_flags="-a hiadaptive -b adaptive"
 sysrc acpi_lid_switch_state="S3"
+```
+Add this to `/etc/sysctl.conf`
+```
 hw.pci.do_power_nodriver=3
 ```
 Boot start drivers (add these to `/boot/loader.conf`
@@ -251,6 +254,11 @@ zfs create -V 8G -o compression=lz4 -o sync=always -o primarycache=metadata -o s
 ```
 ```
 swapon /dev/zvol/zroot/swap
+```
+/etc/fstab example:
+```
+# COMPRESSED SWAP
+/dev/zvol/zroot/swap none swap sw 0 0
 ```
 ### webcamd 
 Enable webcam support (from `webcamd` we installed earlier)
