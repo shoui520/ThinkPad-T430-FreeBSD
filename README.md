@@ -397,7 +397,6 @@ In Firefox, visit about:config
 * media.rdd-vpx.enabled              → false
 * media.hardware-video-decoding.force-enabled → true
 * media.ffmpeg.vaapi-drm-display.enabled      → true
-* security.sandbox.content.level     → 0
 
 In Firefox you NEED this extension: [enhanced-h264ify](https://addons.mozilla.org/en-US/firefox/addon/enhanced-h264ify/)   
 In h264ify, Block 60fps video, Block VP8, Block VP9 and Block AV1.  
