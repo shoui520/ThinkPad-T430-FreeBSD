@@ -347,10 +347,15 @@ setopt INTERACTIVE_COMMENTS
 ```
 ### Install Japanese IME
 ```
-pkg install ja-fcitx5-anthy fcitx5-qt5 fcitx5-qt6 fcitx5-gtk3 fcitx5-configtool noto-jp
+sudo pkg install ja-fcitx5-anthy fcitx5-qt5 fcitx5-qt6 fcitx5-gtk3 fcitx5-configtool noto-jp
 ```
 ```
-cat >> /home/<yourusername>/.xprofile << 'EOF'
+mkdir -p ~/.config/autostart
+cp /usr/share/applications/org.fcitx.Fcitx5.desktop ~/.config/autostart/
+```
+
+```
+cat >> ~/.xprofile << 'EOF'
 export GTK_IM_MODULE=fcitx
 export QT_IM_MODULE=fcitx
 export XMODIFIERS=@im=fcitx
@@ -360,11 +365,10 @@ fcitx5 -d -r &
 EOF
 ```
 ```
-chown yourusername:yourusername /home/yourusername/.xprofile
+chown yourusername:yourusername ~/.xprofile
 ```
 Then you need to add Anthy in KDE with `fcitx5-configtool`.  
 
-Fix KDE keyboard shortcuts being broken:
 ### VA-API GPU accelerated video decode in the browser
 
 This is the only way you can watch YouTube videos in the browser without the CPU being pinned at ~90%.  
@@ -590,6 +594,12 @@ Inside the Linux chroot:
 export WAYLAND_DISPLAY=wayland-0
 export XDG_RUNTIME_DIR=/run/user/1001
 ```
+
+You should now be able to run nearly every Linux ELF binary by just doing this within FreeBSD:
+```
+./some-linux-binary.sh
+```
+
 If you want to play games/use Steam, here is what you need. Big caveat is that Linux/BSD gaming on Ivy Bridge generation GPU sucks because Vulkan is not supported. Use Windows 7/8.1 if you seriously want to play games on an Ivy Bridge GPU. Same applies for Haswell. The good news is anything using OpenGL (emulators etc.) will work fine. 
 
 In the chroot:
