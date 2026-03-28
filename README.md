@@ -63,6 +63,7 @@ Login as root.
 You should be already connected to the internet as the settings from the installer would have transferred to the installed system. If not, run `bsdinstall netconfig`  
 Since the SSH daemon is already running with password authentication, you can log in through SSH from another machine and copy and paste stuff easily! Find the address with `ifconfig wlan0 | grep inet` then from another machine, `ssh <user-name>@<ip address>`  
 
+### Repos + DNS + locale pre config
 Set the FreeBSD repo to `latest`. This gives you access to later versions of software and access to more software considered "unstable." `quarterly` is ideal for production servers, but I think `latest` makes the most sense for a desktop user.  
 
 The built-in FreeBSD editor is `ee`. There is also `vi`. You can install editors like `nano` and `vim` with `pkg` later on, but I recommend changing the repos first before you install anything.
@@ -146,7 +147,7 @@ export LC_COLLATE=C
 export MM_CHARSET=UTF-8
 EOF
 ```
-
+### Essential fonts
 Install essential packages:
 ```
 pkg install sudo git curl wget tmux unzip 7-zip rsync pciutils usbutils drm-kmod webcamd xf86-input-synaptics zsh zsh-autosuggestions zsh-syntax-highlighting
@@ -164,6 +165,7 @@ After installing, rebuild the font cache:
 ```
 fc-cache -fv
 ```
+### Graphics
 Load graphics driver:  
 This is the `drm-kmod` you installed earlier.  
 ```
@@ -190,6 +192,7 @@ EndSection
 EOF
 ```
 
+### ThinkPad T430 / laptop essentials
 Enable laptop essentials (CPU clock speed scaling, S3 sleep, power saving):  
 ```
 sysrc powerd_enable="YES"
@@ -202,7 +205,10 @@ Boot start drivers (add these to `/boot/loader.conf`
 acpi_ibm_load="YES"
 iwn6000g2afw_load="YES"
 snd_hda_load="YES"
+
+hint.psm.0.flags=0x6000
 ```
+### KDE specific config
 Enable required services:  
 ```
 sysrc dbus_enable="YES"
@@ -229,6 +235,15 @@ polkit.addRule(function(action, subject) {
 });
 EOF
 ```
+### Compressed Swap
+Enable compressed swap:
+```
+zfs create -V 8G -o compression=lz4 -o sync=always -o primarycache=metadata -o secondarycache=none -o org.freebsd:swap=on zroot/swap
+```
+```
+swapon /dev/zvol/zroot/swap
+```
+### webcamd 
 Enable webcam support (from `webcamd` we installed earlier)
 ```
 sysrc webcamd_enable="YES"
@@ -240,9 +255,112 @@ Add your user to the webcamd group:
 pw groupmod webcamd -m yourusername
 ```
 
+NOW REBOOT!!! 
+Log in to KDE Plasma (X11) as your user.  
+
+### Pipewire permissions error
+Fix Pipewire not launching:
+```
+sudo chown -R <yourusername>:<yourusername> /home/<yourusername>
+sudo chmod 700 /home/<yourusername>
+```
+### 100% CPU usage bug
+Fix 100% CPU usage on KDE (FreeBSD build specific bugs):  
+Right-click the clock in your taskbar → "Configure Digital Clock" → find "Show seconds" and set it to "Never".  
+
+Make sure you minimize the number of system tray icons. Disable ones you don't need. There is a FreeBSD specific bug where having tray icons can pin the CPU at 100%.  
+### KDE keyboard shortcuts
+
+Fix KDE keyboard shortcuts being broken:  
+For some unknown reason, the KDE keyboard shortcuts are half-broken on FreeBSD KDE by default.  
+No other way other to fix this than to import the KDE Linux keyboard shortcut config. `kglobalshortcuts.kksrc`
+Download it from this repo. And import it in the Shortcuts settings page in KDE as a Custom.  
+
+
+### zsh
+Switch to zsh, it's so much better than the built-in sh:
+```
+chsh -s /usr/local/bin/zsh
+```
+Create a file `.zshrc` in your home directory. And paste this is in
+```
+# --- History ---
+HISTFILE=~/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+setopt EXTENDED_HISTORY
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_REDUCE_BLANKS
+setopt SHARE_HISTORY
+setopt INC_APPEND_HISTORY
+
+# --- Prompt ---
+PS1='[%n@%m %1~]%# '
+
+# --- Autocorrect ---
+setopt CORRECT
+
+# --- Completion ---
+autoload -Uz compinit
+compinit
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' rehash true
+
+# --- History search ---
+autoload -Uz up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A' up-line-or-beginning-search
+bindkey '^[[B' down-line-or-beginning-search
+bindkey '^[OA' up-line-or-beginning-search
+bindkey '^[OB' down-line-or-beginning-search
+bindkey '^R' history-incremental-search-backward
+
+# --- Autosuggestions ---
+source /usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=244'
+bindkey '^F' forward-word
+
+# --- Syntax highlighting (load last) ---
+source /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+ZSH_HIGHLIGHT_STYLES[command]='fg=11,bold'
+ZSH_HIGHLIGHT_STYLES[builtin]='fg=11,bold'
+ZSH_HIGHLIGHT_STYLES[alias]='fg=11,bold'
+ZSH_HIGHLIGHT_STYLES[precommand]='fg=14,bold'
+
+# --- Misc ---
+setopt AUTO_CD
+setopt INTERACTIVE_COMMENTS
+```
+### Install Japanese IME
+```
+pkg install ja-fcitx5-anthy fcitx5-qt5 fcitx5-qt6 fcitx5-gtk3 fcitx5-configtool noto-jp
+```
+```
+cat >> /home/<yourusername>/.xprofile << 'EOF'
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+export SDL_IM_MODULE=fcitx
+export GLFW_IM_MODULE=ibus
+fcitx5 -d -r &
+EOF
+```
+```
+chown yourusername:yourusername /home/yourusername/.xprofile
+```
+Then you need to add Anthy in KDE with `fcitx5-configtool`.  
+
+Fix KDE keyboard shortcuts being broken:
+
 ### Tweaks
 
-I believe these tweaks are ideal for making FreeBSD feel like a desktop and not a server OS.
+I believe these tweaks are ideal for making FreeBSD feel like a desktop and not a server OS.  
+
 Edit /etc/sysctl.conf and drop these in:
 ```
 # Lets interactive user threads immediately preempt CPU-hogs, eliminating UI stalls.
@@ -292,13 +410,26 @@ Add noatime to your ZFS dataset properties (zfs set atime=off zroot) to eliminat
 ```
 zfs set atime=off zroot
 ```
-
+Disable CPU vulnerability mitigations for a **free speed boost!!**.   
+If you didn't know, older CPUs (made before 2018) are affected by the Spectre & Meltdown vulnerability, affecting speculative execution, and operating systems (Windows, Mac, Linux, FreeBSD) have all implemented mitigations that patch the vulnerability. But this makes your CPU slower. 
+Add this to your `/boot/loader.conf`. It does the same as the `mitigations=off` kernel parameter on Linux / InSpectre on Windows.  
+```
+hw.ibrs_disable=1
+hw.spec_store_bypass_disable=0
+vm.pmap.pti=0
+hw.mds_disable=0
+machdep.mitigations.flush_rsb_ctxsw=0
+```
 ## Linux compatibility layer (Linuxulator) setup
 Enable the kernel modules:
 ```
 sysrc linux_enable="YES"
 sysrc linux_mounts_enable="YES"
 service linux start
+```
+Edit `/boot/loader.conf`:
+```
+linux64_load="YES"
 ```
 Install debootstrap:
 ```
