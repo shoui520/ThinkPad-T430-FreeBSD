@@ -149,7 +149,7 @@ EOF
 
 Install essential packages:
 ```
-pkg install sudo git curl wget tmux unzip 7-zip rsync pciutils usbutils drm-kmod webcamd xf86-input-synaptics zsh zshs-autosuggestions zsh-syntax-highlighting
+pkg install sudo git curl wget tmux unzip 7-zip rsync pciutils usbutils drm-kmod webcamd xf86-input-synaptics zsh zsh-autosuggestions zsh-syntax-highlighting
 ```
 Install desktop environment packages (KDE Plasma):
 ```
@@ -163,6 +163,134 @@ pkg install noto
 After installing, rebuild the font cache:
 ```
 fc-cache -fv
+```
+Load graphics driver:  
+This is the `drm-kmod` you installed earlier.  
+```
+sysrc kld_list+="i915kms"
+```
+```
+kldload i915kms
+```
+Since there is screen tearing by default on the Intel HD 4000 on this laptop, and KDE doesn't expose the option to force V-sync anymore, we have to use the legacy driver, `xf86-video-intel` to prevent screen tearing.
+```
+pkg install xf86-video-intel
+```
+The config:
+```
+mkdir -p /usr/local/etc/X11/xorg.conf.d
+
+cat > /usr/local/etc/X11/xorg.conf.d/20-intel.conf << 'EOF'
+Section "Device"
+    Identifier  "Intel Graphics"
+    Driver      "intel"
+    Option      "AccelMethod"  "sna"
+    Option      "TearFree"     "true"
+EndSection
+EOF
+```
+
+Enable laptop essentials (CPU clock speed scaling, S3 sleep, power saving):  
+```
+sysrc powerd_enable="YES"
+sysrc powerd_flags="-a hiadaptive -b adaptive"
+sysrc acpi_lid_switch_state="S3"
+hw.pci.do_power_nodriver=3
+```
+Boot start drivers (add these to `/boot/loader.conf`
+```
+acpi_ibm_load="YES"
+iwn6000g2afw_load="YES"
+snd_hda_load="YES"
+```
+Enable required services:  
+```
+sysrc dbus_enable="YES"
+sysrc sddm_enable="YES"
+```
+Mount procfs:  
+
+KDE will not work without it.
+Edit `/etc/fstab`:
+```
+proc    /proc   procfs  rw  0   0
+```
+Configure D-Bus and polkit:  
+
+Create the polkit rule so wheel users can do admin tasks in KDE:
+```
+mkdir -p /usr/local/etc/polkit-1/rules.d
+
+cat > /usr/local/etc/polkit-1/rules.d/40-wheel-group.rules << 'EOF'
+polkit.addRule(function(action, subject) {
+    if (subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+EOF
+```
+Enable webcam support (from `webcamd` we installed earlier)
+```
+sysrc webcamd_enable="YES"
+service webcamd start
+```
+Add your user to the webcamd group:
+
+```
+pw groupmod webcamd -m yourusername
+```
+
+### Tweaks
+
+I believe these tweaks are ideal for making FreeBSD feel like a desktop and not a server OS.
+Edit /etc/sysctl.conf and drop these in:
+```
+# Lets interactive user threads immediately preempt CPU-hogs, eliminating UI stalls.
+kern.sched.preempt_thresh=224
+# Shortens timeslices so no single thread can monopolize a core, keeping desktop interactions snappy.
+kern.sched.slice=3
+# Doubles the read-ahead window for better sequential read throughput (file copies, app loading).
+vfs.read_max=128
+# Allows 4MB of dirty data to accumulate before throttling, improving bursty write performance.
+vfs.hirunningspace=4194304
+# Raises the max single SHM segment to 64MB so browsers and compositors don't fail on large allocations.
+kern.ipc.shmmax=67108864
+# Expands the system-wide SHM pool to 128MB for concurrent browser + compositor + desktop app usage.
+kern.ipc.shmall=32768
+# Wires SHM pages into physical RAM, preventing latency spikes from page faults during rendering.
+kern.ipc.shm_use_phys=1
+# Lets processes keep using SHM segments marked for deletion, which Chromium and others rely on.
+kern.ipc.shm_allow_removed=1
+# Sets moderate audio buffer sizes for low-latency playback without underruns.
+hw.snd.latency=2
+# Selects the desktop latency profile, balancing responsiveness and stability.
+hw.snd.latency_profile=1
+# Uses highest-quality sinc resampling to avoid audible aliasing on sample rate mismatches.
+hw.snd.feeder_rate_quality=3
+# Disables core dumps, saving disk space and I/O on process crashes.
+kern.coredump=0
+# Kills the annoying console beep.
+kern.vt.enable_bell=0
+# Lets non-root users mount filesystems, enabling USB drives and FUSE without sudo.
+vfs.usermount=1
+```
+Edit `/etc/rc.conf`:
+```
+performance_cx_lowest="Cmax"
+economy_cx_lowest="Cmax"
+```
+Edit `/boot/loader.conf`
+```
+# ZFS ARC — the single most impactful desktop tuning on 8GB of RAM
+vfs.zfs.arc_max="2147483648"
+# Shared memory limits for X11/browsers
+kern.ipc.shmseg="1024"
+kern.ipc.shmmni="1024"
+```
+ZFS:
+Add noatime to your ZFS dataset properties (zfs set atime=off zroot) to eliminate unnecessary metadata writes.
+```
+zfs set atime=off zroot
 ```
 
 ## Linux compatibility layer (Linuxulator) setup
