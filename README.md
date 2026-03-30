@@ -556,7 +556,7 @@ fdescfs         /compat/linux/dev/fd    fdescfs         rw,late,linrdlnk        
 linprocfs       /compat/linux/proc      linprocfs       rw,late                      0  0
 linsysfs        /compat/linux/sys       linsysfs        rw,late                      0  0
 /tmp            /compat/linux/tmp       nullfs          rw,late                      0  0
-/home           /compat/linux/home      nullfs          rw,late                      0  0
+/home/<YOUR-USERNAME>  /compat/linux/home/<YOUR-USERNAME>  nullfs  rw,late  0  0
 ```
 Mount:
 ```
