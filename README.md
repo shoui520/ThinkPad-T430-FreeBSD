@@ -516,6 +516,18 @@ vm.pmap.pti=0
 hw.mds_disable=0
 machdep.mitigations.flush_rsb_ctxsw=0
 ```
+## Fix audio buffer underruns (cut outs/hitches)
+
+The default PulseAudio settings are ideal for fast computers, not slow ones like the T430. Fix it:
+```
+mkdir -p ~/.config/pulse/daemon.conf
+tee ~/.config/pulse/daemon.conf << 'EOF'
+default-fragments = 4
+default-fragment-size-msec = 50
+EOF
+
+pulseaudio -k
+```
 ## Linux compatibility layer (Linuxulator) setup
 Enable the kernel modules:
 ```
@@ -608,14 +620,55 @@ You should now be able to run nearly every Linux ELF binary by just doing this w
 ./some-linux-binary.sh
 ```
 
-If you want to play games/use Steam, here is what you need. Big caveat is that Linux/BSD gaming on Ivy Bridge generation GPU sucks because Vulkan is not supported. Use Windows 7/8.1 if you seriously want to play games on an Ivy Bridge GPU. Same applies for Haswell. The good news is anything using OpenGL (emulators etc.) will work fine. 
+Fix sound, if it doesn't work:
+```
+if [ ! -d /compat/linux/run/user/1001/pulse ]; then
+    sudo mount -t nullfs /var/run/user/1001 /compat/linux/run/user/1001 2>/dev/null
+fi
+```
+
+And in `visudo`:
+```
+<YOUR USERNAME> ALL=(root) NOPASSWD: /sbin/mount -t nullfs /var/run/user/1001 /compat/linux/run/user/1001
+```
+
+In your .zshrc/shrc:
+```
+export PULSE_SERVER=unix:/run/user/1001/pulse/native
+```
+Route ALSA through PulseAudio:
+```
+sudo tee /compat/linux/etc/asound.conf << 'EOF'
+pcm.default pulse
+ctl.default pulse
+
+pcm.pulse {
+    type pulse
+}
+ctl.pulse {
+    type pulse
+}
+EOF
+```
+Older Minecraft running with Java Runtime Environment version 8 has issues with audio, here is the fix. Add this to whatever launcher you're using:
+
+Java argument:
+```
+-Djavax.sound.sampled.Clip=org.classpath.icedtea.pulseaudio.PulseAudioMixerProvider
+```
+Environment variable:
+```
+PULSE_SERVER=unix:/run/user/1001/pulse/native
+```
+
+If you want to play games/use Steam, here is what you need. Big caveat is that Linux/BSD gaming on Ivy Bridge generation GPU sucks because Vulkan is not supported. Use Windows 7/8.1/10 LTSC if you seriously want to play games on an Ivy Bridge GPU. Same applies for Haswell. The good news is anything using OpenGL (emulators, Minecraft etc.) will work fine. 
 
 In the chroot:
 ```
 dpkg --add-architecture i386
 apt update
 
-apt install -y libgl1-mesa-dri libgl1-mesa-dri:i386 libgl1-mesa-glx libgl1-mesa-glx:i386 mesa-vulkan-drivers mesa-vulkan-drivers:i386 libvulkan1 libvulkan1:i386 libegl1 libegl1:i386 libgbm1 libgbm1:i386 libdrm2 libdrm2:i386 libdrm-intel1 libdrm-intel1:i386 libglx-mesa0 libglx-mesa0:i386 libopengl0 libopengl0:i386 libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxkbcommon-x11-0 libxkbcommon0 libgtk-3-0 libgtk-3-0:i386 libnss3 libnss3:i386 libatk-bridge2.0-0 libatk-bridge2.0-0:i386 libasound2 libasound2:i386 libasound2-plugins libasound2-plugins:i386 libpulse0 libpulse0:i386 libcups2 libcups2:i386 libdbus-1-3 libdbus-1-3:i386 libfontconfig1 libfontconfig1:i386 libfreetype6 libfreetype6:i386 libxcomposite1 libxcomposite1:i386 libxdamage1 libxdamage1:i386 libxrandr2 libxrandr2:i386 libxtst6 libxtst6:i386 libxss1 libxss1:i386 libgdk-pixbuf2.0-0 libgdk-pixbuf2.0-0:i386 libpango-1.0-0 libpango-1.0-0:i386 libcairo2 libcairo2:i386 libsdl2-2.0-0 libsdl2-2.0-0:i386 libusb-1.0-0 libusb-1.0-0:i386 libgpg-error0:i386 libgcrypt20:i386 libsystemd0:i386 libudev1:i386 libappindicator3-1 curl wget ca-certificates zenity xdg-utils fonts-noto fonts-noto-cjk fonts-noto-cjk-extra
+apt install -y libgl1-mesa-dri libgl1-mesa-dri:i386 libgl1-mesa-glx libgl1-mesa-glx:i386 mesa-vulkan-drivers mesa-vulkan-drivers:i386 libvulkan1 libvulkan1:i386 libegl1 libegl1:i386 libgbm1 libgbm1:i386 libdrm2 libdrm2:i386 libdrm-intel1 libdrm-intel1:i386 libglx-mesa0 libglx-mesa0:i386 libopengl0 libopengl0:i386 libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxkbcommon-x11-0 libxkbcommon0 libgtk-3-0 libgtk-3-0:i386 libnss3 libnss3:i386 libatk-bridge2.0-0 libatk-bridge2.0-0:i386 libasound2 libasound2:i386 libasound2-plugins libasound2-plugins:i386 libpulse0 libpulse0:i386 libcups2 libcups2:i386 libdbus-1-3 libdbus-1-3:i386 libfontconfig1 libfontconfig1:i386 libfreetype6 libfreetype6:i386 libxcomposite1 libxcomposite1:i386 libxdamage1 libxdamage1:i386 libxrandr2 libxrandr2:i386 libxtst6 libxtst6:i386 libxss1 libxss1:i386 libgdk-pixbuf2.0-0 libgdk-pixbuf2.0-0:i386 libpango-1.0-0 libpango-1.0-0:i386 libcairo2 libcairo2:i386 libsdl2-2.0-0 libsdl2-2.0-0:i386 libusb-1.0-0 libusb-1.0-0:i386 libgpg-error0:i386 libgcrypt20:i386 libsystemd0:i386 libudev1:i386 libappindicator3-1 libgl1 libgl1:i386 libxcb-dri3-0 libxcb-dri3-0:i386 libxinerama1 libxinerama1:i386 libxkbcommon-x11-0:i386 xdg-desktop-portal xdg-desktop-portal-gtk libnm0 libnm0:i386curl wget ca-certificates zenity xdg-utils fonts-noto fonts-noto-cjk fonts-noto-cjk-extra
 ```
 Though if you are seriously considering playing Windows games on FreeBSD, look into [Mizutamari](https://docs.freebsd.org/en/books/handbook/wine/#using-homura). 
 
